@@ -20,7 +20,7 @@ static CMARK_INLINE void S_blankline(cmark_renderer *renderer) {
 
 static void S_out(cmark_renderer *renderer, const char *source, bool wrap,
                   cmark_escaping escape) {
-  int length = strlen(source);
+  size_t length = strlen(source);
   unsigned char nextc;
   int32_t c;
   int i = 0;
@@ -58,7 +58,7 @@ static void S_out(cmark_renderer *renderer, const char *source, bool wrap,
       renderer->column = renderer->prefix->size;
     }
 
-    len = cmark_utf8proc_iterate((const uint8_t *)source + i, length - i, &c);
+    len = cmark_utf8proc_iterate((const uint8_t *)source + i, (bufsize_t)length - i, &c);
     if (len == -1) { // error condition
       return;        // return without rendering rest of string
     }
