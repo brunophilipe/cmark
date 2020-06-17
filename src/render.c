@@ -23,7 +23,7 @@ static void S_out(cmark_renderer *renderer, const char *source, bool wrap,
   size_t length = strlen(source);
   unsigned char nextc;
   int32_t c;
-  int i = 0;
+  size_t i = 0;
   int last_nonspace;
   int len;
   int k = renderer->buffer->size - 1;
