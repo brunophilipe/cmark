@@ -279,12 +279,12 @@ static int S_render_node(cmark_node *node, cmark_event_type ev_type,
       if ((options & CMARK_OPT_UNSAFE) ||
             !(_scan_dangerous_url(node->as.link.url))) {
         houdini_escape_href(html, node->as.link.url,
-                            strlen((char *)node->as.link.url));
+                            (bufsize_t)strlen((char *)node->as.link.url));
       }
       if (node->as.link.title) {
         cmark_strbuf_puts(html, "\" title=\"");
         escape_html(html, node->as.link.title,
-                    strlen((char *)node->as.link.title));
+                    (bufsize_t)strlen((char *)node->as.link.title));
       }
       cmark_strbuf_puts(html, "\">");
     } else {
@@ -298,7 +298,7 @@ static int S_render_node(cmark_node *node, cmark_event_type ev_type,
       if ((options & CMARK_OPT_UNSAFE) ||
             !(_scan_dangerous_url(node->as.link.url))) {
         houdini_escape_href(html, node->as.link.url,
-                            strlen((char *)node->as.link.url));
+                            (bufsize_t)strlen((char *)node->as.link.url));
       }
       cmark_strbuf_puts(html, "\" alt=\"");
       state->plain = node;
@@ -306,7 +306,7 @@ static int S_render_node(cmark_node *node, cmark_event_type ev_type,
       if (node->as.link.title) {
         cmark_strbuf_puts(html, "\" title=\"");
         escape_html(html, node->as.link.title,
-                    strlen((char *)node->as.link.title));
+                    (bufsize_t)strlen((char *)node->as.link.title));
       }
 
       cmark_strbuf_puts(html, "\" />");

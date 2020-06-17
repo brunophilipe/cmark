@@ -58,7 +58,7 @@ static void S_out(cmark_renderer *renderer, const char *source, bool wrap,
       renderer->column = renderer->prefix->size;
     }
 
-    len = cmark_utf8proc_iterate((const uint8_t *)source + i, (bufsize_t)length - i, &c);
+    len = cmark_utf8proc_iterate((const uint8_t *)source + i, (bufsize_t)(length - i), &c);
     if (len == -1) { // error condition
       return;        // return without rendering rest of string
     }
