@@ -177,7 +177,8 @@ static void accessors(test_batch_runner *runner) {
   OK(runner, cmark_node_set_literal(string, literal + sizeof("prefix")),
      "set_literal suffix");
 
-  char *rendered_html = cmark_render_html(doc, CMARK_OPT_DEFAULT);
+  char *rendered_html = cmark_render_html(doc,
+		          CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE);
   static const char expected_html[] =
       "<h3>Header</h3>\n"
       "<ol start=\"3\">\n"
@@ -242,6 +243,21 @@ static void accessors(test_batch_runner *runner) {
   cmark_node_free(doc);
 }
 
+static void free_parent(test_batch_runner *runner) {
+  static const char markdown[] = "text\n";
+
+  cmark_node *doc =
+      cmark_parse_document(markdown, sizeof(markdown) - 1, CMARK_OPT_DEFAULT);
+
+  cmark_node *para = cmark_node_first_child(doc);
+  cmark_node *text = cmark_node_first_child(para);
+  cmark_node_unlink(text);
+  cmark_node_free(doc);
+  STR_EQ(runner, cmark_node_get_literal(text), "text",
+         "inline content after freeing parent block");
+  cmark_node_free(text);
+}
+
 static void node_check(test_batch_runner *runner) {
   // Construct an incomplete tree.
   cmark_node *doc = cmark_node_new(CMARK_NODE_DOCUMENT);
@@ -304,7 +320,9 @@ static void iterator_delete(test_batch_runner *runner) {
                                  "<p>a  c</p>\n";
   STR_EQ(runner, html, expected, "iterate and delete nodes");
 
-  free(html);
+  cmark_mem *allocator = cmark_get_default_mem_allocator();
+
+  allocator->free(html);
   cmark_iter_free(iter);
   cmark_node_free(doc);
 }
@@ -380,9 +398,6 @@ static void create_tree(test_batch_runner *runner) {
   free(html);
 
   cmark_node_free(doc);
-
-  // TODO: Test that the contents of an unlinked inline are valid
-  // after the parent block was destroyed. This doesn't work so far.
   cmark_node_free(emph);
 }
 
@@ -836,11 +851,11 @@ static void numeric_entities(test_batch_runner *runner) {
                   "Valid numeric entity 0x10FFFF");
   test_md_to_html(runner, "&#x110000;", "<p>" UTF8_REPL "</p>\n",
                   "Invalid numeric entity 0x110000");
-  test_md_to_html(runner, "&#x80000000;", "<p>" UTF8_REPL "</p>\n",
+  test_md_to_html(runner, "&#x80000000;", "<p>&amp;#x80000000;</p>\n",
                   "Invalid numeric entity 0x80000000");
-  test_md_to_html(runner, "&#xFFFFFFFF;", "<p>" UTF8_REPL "</p>\n",
+  test_md_to_html(runner, "&#xFFFFFFFF;", "<p>&amp;#xFFFFFFFF;</p>\n",
                   "Invalid numeric entity 0xFFFFFFFF");
-  test_md_to_html(runner, "&#99999999;", "<p>" UTF8_REPL "</p>\n",
+  test_md_to_html(runner, "&#99999999;", "<p>&amp;#99999999;</p>\n",
                   "Invalid numeric entity 99999999");
 
   test_md_to_html(runner, "&#;", "<p>&amp;#;</p>\n",
@@ -859,7 +874,7 @@ static void test_safe(test_batch_runner *runner) {
                                  "a>\n[link](JAVAscript:alert('hi'))\n![image]("
                                  "file:my.js)\n";
   char *html = cmark_markdown_to_html(raw_html, sizeof(raw_html) - 1,
-                                      CMARK_OPT_DEFAULT | CMARK_OPT_SAFE);
+                                      CMARK_OPT_DEFAULT);
   STR_EQ(runner, html, "<!-- raw HTML omitted -->\n<p><!-- raw HTML omitted "
                        "-->hi<!-- raw HTML omitted -->\n<a "
                        "href=\"\">link</a>\n<img src=\"\" alt=\"image\" "
@@ -914,7 +929,7 @@ static void source_pos(test_batch_runner *runner) {
                       "  </heading>\n"
                       "  <paragraph sourcepos=\"3:1-4:42\">\n"
                       "    <text sourcepos=\"3:1-3:14\" xml:space=\"preserve\">Hello “ </text>\n"
-                      "    <link sourcepos=\"3:15-3:37\" destination=\"http://www.google.com\" title=\"\">\n"
+                      "    <link sourcepos=\"3:15-3:37\" destination=\"http://www.google.com\">\n"
                       "      <text sourcepos=\"3:16-3:36\" xml:space=\"preserve\">http://www.google.com</text>\n"
                       "    </link>\n"
                       "    <softbreak />\n"
@@ -952,6 +967,53 @@ static void source_pos(test_batch_runner *runner) {
   cmark_node_free(doc);
 }
 
+static void source_pos_inlines(test_batch_runner *runner) {
+  {
+    static const char markdown[] =
+      "*first*\n"
+      "second\n";
+
+    cmark_node *doc = cmark_parse_document(markdown, sizeof(markdown) - 1, CMARK_OPT_DEFAULT);
+    char *xml = cmark_render_xml(doc, CMARK_OPT_DEFAULT | CMARK_OPT_SOURCEPOS);
+    STR_EQ(runner, xml, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                        "<!DOCTYPE document SYSTEM \"CommonMark.dtd\">\n"
+                        "<document sourcepos=\"1:1-2:6\" xmlns=\"http://commonmark.org/xml/1.0\">\n"
+                        "  <paragraph sourcepos=\"1:1-2:6\">\n"
+                        "    <emph sourcepos=\"1:1-1:7\">\n"
+                        "      <text sourcepos=\"1:2-1:6\" xml:space=\"preserve\">first</text>\n"
+                        "    </emph>\n"
+                        "    <softbreak />\n"
+                        "    <text sourcepos=\"2:1-2:6\" xml:space=\"preserve\">second</text>\n"
+                        "  </paragraph>\n"
+                        "</document>\n",
+                        "sourcepos are as expected");
+    free(xml);
+    cmark_node_free(doc);
+  }
+  {
+    static const char markdown[] =
+      "*first\n"
+      "second*\n";
+
+    cmark_node *doc = cmark_parse_document(markdown, sizeof(markdown) - 1, CMARK_OPT_DEFAULT);
+    char *xml = cmark_render_xml(doc, CMARK_OPT_DEFAULT | CMARK_OPT_SOURCEPOS);
+    STR_EQ(runner, xml, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                        "<!DOCTYPE document SYSTEM \"CommonMark.dtd\">\n"
+                        "<document sourcepos=\"1:1-2:7\" xmlns=\"http://commonmark.org/xml/1.0\">\n"
+                        "  <paragraph sourcepos=\"1:1-2:7\">\n"
+                        "    <emph sourcepos=\"1:1-2:7\">\n"
+                        "      <text sourcepos=\"1:2-1:6\" xml:space=\"preserve\">first</text>\n"
+                        "      <softbreak />\n"
+                        "      <text sourcepos=\"2:1-2:6\" xml:space=\"preserve\">second</text>\n"
+                        "    </emph>\n"
+                        "  </paragraph>\n"
+                        "</document>\n",
+                        "sourcepos are as expected");
+    free(xml);
+    cmark_node_free(doc);
+  }
+}
+
 static void ref_source_pos(test_batch_runner *runner) {
   static const char markdown[] =
     "Let's try [reference] links.\n"
@@ -983,6 +1045,7 @@ int main() {
   version(runner);
   constructor(runner);
   accessors(runner);
+  free_parent(runner);
   node_check(runner);
   iterator(runner);
   iterator_delete(runner);
@@ -1002,6 +1065,7 @@ int main() {
   test_safe(runner);
   test_feed_across_line_ending(runner);
   source_pos(runner);
+  source_pos_inlines(runner);
   ref_source_pos(runner);
 
   test_print_summary(runner);

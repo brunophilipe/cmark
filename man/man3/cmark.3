@@ -1,4 +1,4 @@
-.TH cmark 3 "June 02, 2017" "LOCAL" "Library Functions Manual"
+.TH cmark 3 "February 09, 2020" "LOCAL" "Library Functions Manual"
 .SH
 NAME
 .PP
@@ -114,6 +114,12 @@ typedef struct cmark_mem {
 .PP
 Defines the memory allocation functions to be used by CMark when parsing
 and allocating a document tree
+
+.PP
+\fIcmark_mem *\f[] \fBcmark_get_default_mem_allocator\f[](\fI\f[])
+
+.PP
+Returns a pointer to the default memory allocator.
 
 .SS
 Creating and Destroying Nodes
@@ -727,11 +733,25 @@ Render \f[C]softbreak\f[] elements as hard line breaks.
 .fi
 
 .PP
-Suppress raw HTML and unsafe links (\f[C]javascript:\f[],
+\f[C]CMARK_OPT_SAFE\f[] is defined here for API compatibility, but it no
+longer has any effect. "Safe" mode is now the default: set
+\f[C]CMARK_OPT_UNSAFE\f[] to disable it.
+
+.PP
+.nf
+\fC
+.RS 0n
+#define CMARK_OPT_UNSAFE (1 << 17)
+.RE
+\f[]
+.fi
+
+.PP
+Render raw HTML and unsafe links (\f[C]javascript:\f[],
 \f[C]vbscript:\f[], \f[C]file:\f[], and \f[C]data:\f[], except for
 \f[C]image/png\f[], \f[C]image/gif\f[], \f[C]image/jpeg\f[], or
-\f[C]image/webp\f[] mime types). Raw HTML is replaced by a placeholder
-HTML comment. Unsafe links are replaced by empty strings.
+\f[C]image/webp\f[] mime types). By default, raw HTML is replaced by a
+placeholder HTML comment. Unsafe links are replaced by empty strings.
 
 .PP
 .nf

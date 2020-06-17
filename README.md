@@ -1,8 +1,8 @@
 cmark
 =====
 
-[![Build Status]](https://travis-ci.org/commonmark/cmark)
-[![Windows Build Status]](https://ci.appveyor.com/project/jgm/cmark-0ub06)
+[![CI
+tests](https://github.com/commonmark/cmark/workflows/CI%20tests/badge.svg)](https://github.com/commonmark/cmark/actions)
 
 `cmark` is the C reference implementation of [CommonMark], a
 rationalized version of Markdown syntax with a [spec][the spec].
@@ -156,14 +156,14 @@ be found in the man pages in the `man` subdirectory.
 Security
 --------
 
-By default, the library will pass through raw HTML and potentially
+By default, the library will scrub raw HTML and potentially
 dangerous links (`javascript:`, `vbscript:`, `data:`, `file:`).
 
-It is recommended that users either disable this potentially unsafe
-feature by using the option `CMARK_OPT_SAFE` (or `--safe` with the
-command-line program), or run the output through an HTML sanitizer
-to protect against
-[XSS attacks](http://en.wikipedia.org/wiki/Cross-site_scripting).
+To allow these, use the option `CMARK_OPT_UNSAFE` (or
+`--unsafe`) with the command line program. If doing so, we
+recommend you use a HTML sanitizer specific to your needs to
+protect against [XSS
+attacks](http://en.wikipedia.org/wiki/Cross-site_scripting).
 
 Contributing
 ------------

@@ -23,7 +23,7 @@ CLANG_CHECK?=clang-check
 CLANG_FORMAT=clang-format -style llvm -sort-includes=0 -i
 AFL_PATH?=/usr/local/bin
 
-.PHONY: all cmake_build leakcheck clean fuzztest test debug ubsan asan mingw archive newbench bench format update-spec afl clang-check libFuzzer
+.PHONY: all cmake_build leakcheck clean fuzztest test debug ubsan asan mingw archive newbench bench format update-spec afl libFuzzer lint
 
 all: cmake_build man/man3/cmark.3
 
@@ -45,6 +45,9 @@ $(BUILDDIR):
 
 install: $(BUILDDIR)
 	$(MAKE) -C $(BUILDDIR) install
+
+uninstall: $(BUILDDIR)/install_manifest.txt
+	xargs rm < $<
 
 debug:
 	mkdir -p $(BUILDDIR); \
@@ -73,7 +76,7 @@ prof:
 afl:
 	@[ -n "$(AFL_PATH)" ] || { echo '$$AFL_PATH not set'; false; }
 	mkdir -p $(BUILDDIR)
-	cd $(BUILDDIR) && cmake .. -DCMAKE_C_COMPILER=$(AFL_PATH)/afl-clang
+	cd $(BUILDDIR) && cmake .. -DCMARK_TESTS=0 -DCMAKE_C_COMPILER=$(AFL_PATH)/afl-clang
 	$(MAKE)
 	$(AFL_PATH)/afl-fuzz \
 	    -i test/afl_test_cases \
@@ -89,8 +92,11 @@ libFuzzer:
 	$(MAKE) -j2 -C $(BUILDDIR) cmark-fuzz
 	test/run-cmark-fuzz $(CMARK_FUZZ)
 
-clang-check: all
-	${CLANG_CHECK} -p build -analyze src/*.c
+lint: $(BUILDDIR)
+	errs=0 ; \
+	for f in `ls src/*.[ch] | grep -v "scanners.c"` ; \
+	  do echo $$f ; clang-tidy -header-filter='^build/.*' -p=build -warnings-as-errors='*' $$f || errs=1 ; done ; \
+	exit $$errs
 
 mingw:
 	mkdir -p $(MINGW_BUILDDIR); \
